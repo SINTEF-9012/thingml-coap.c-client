@@ -8,14 +8,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include "smcp/smcp.h"
+#include <stdint.h>
 
 
 #include "../thingml_coap_utility.h"
 #include "../cmd_get.h"
 
-
-static smcp_t gSMCPInstance;
 
 void coap_error_callback(void* _instance, ...) {
 	int result;
@@ -46,24 +44,19 @@ void coap_message_recieved_callback(void* _instance, ...) {
 
 }
 
-
 int main(int argc, char* argv[]) {
 
 	uint16_t port = 5683;
 	const char * resource_url = "coap://localhost:5683/outside_temperature";
 	ThingMLCOAPContext* context = malloc(sizeof(ThingMLCOAPContext));
 
-	gSMCPInstance = smcp_create(port);
-
 	context->thing_instance = NULL;
 	context->url = resource_url;
+	context->port = port;
 	context->fn_onerror_callback = coap_error_callback;
 	context->fn_onmsgrcv_callback = coap_message_recieved_callback;
 
-	tool_cmd_get_url(gSMCPInstance, (void*) context);
-
-	if(gSMCPInstance)
-		smcp_release(gSMCPInstance);
+	tool_cmd_get_url((void*) context);
 
 }
 

@@ -19,6 +19,7 @@ typedef struct {
 	pthingMLCOAPClient fn_onmsgrcv_callback;
 	const char* url;
 	void* thing_instance;
+	uint16_t port;
 
 } ThingMLCOAPContext;
 

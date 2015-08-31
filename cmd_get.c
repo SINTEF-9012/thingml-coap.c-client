@@ -52,6 +52,8 @@ static coap_content_type_t request_accept_type = -1;
 
 static struct smcp_transaction_s transaction;
 
+static smcp_t gSMCPInstance;
+
 static smcp_status_t
 get_response_handler(int statuscode, void* context) {
 	ThingMLCOAPContext * thingml_context = (ThingMLCOAPContext *) context;
@@ -214,9 +216,7 @@ bail:
 }
 
 int
-tool_cmd_get_url(
-		smcp_t smcp, void *thingML_context
-) {
+tool_cmd_get_url(void *thingML_context) {
 	get_show_headers = false;
 	next_len = ((coap_size_t)(-1));
 	get_show_headers = false;
@@ -231,17 +231,23 @@ tool_cmd_get_url(
 	observe_ignore_first = false;
 	get_tt = COAP_TRANS_TYPE_CONFIRMABLE;
 
+	gSMCPInstance = smcp_create(((ThingMLCOAPContext*) thingML_context)->port);
+
 	gRet = ERRORCODE_INPROGRESS;
-	require(send_get_request(smcp, NULL, 0, thingML_context), bail);
+	require(send_get_request(gSMCPInstance, NULL, 0, thingML_context), bail);
 
 
 	while(ERRORCODE_INPROGRESS == gRet) {
-		smcp_wait(smcp,1000);
-		smcp_process(smcp);
+		smcp_wait(gSMCPInstance,1000);
+		smcp_process(gSMCPInstance);
 	}
 
 bail:
-	smcp_transaction_end(smcp,&transaction);
+	smcp_transaction_end(gSMCPInstance,&transaction);
 	signal(SIGINT, previous_sigint_handler);
+
+	if(gSMCPInstance)
+		smcp_release(gSMCPInstance);
+
 	return gRet;
 }
