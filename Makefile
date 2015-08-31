@@ -1,5 +1,7 @@
-SRCS = cmd_list.c cmd_get.c cmd_post.c help.c cmd_repeat.c cmd_delete.c
-OBJS = cmd_list.o cmd_get.o cmd_post.o help.o cmd_repeat.o cmd_delete.o
+#SRCS = cmd_list.c cmd_get.c cmd_post.c help.c cmd_repeat.c cmd_delete.c
+#OBJS = cmd_list.o cmd_get.o cmd_post.o help.o cmd_repeat.o cmd_delete.o
+SRCS = cmd_get.c
+OBJS = cmd_get.o
 
 SRCS_EXAMPLE = ./examples/coap_get_test.c
 OBJS_EXAMPLE = ./examples/coap_get_test.o
@@ -49,7 +51,7 @@ uninstall:
 bin : bin_get
 
 bin_get : $(OBJS_EXAMPLE)
-	$(GCC) -o $(BIN_EXAMPLE) $(GFLAGS) $(OBJS_EXAMPLE) $(LIB) $(STATIC_LIB_LOCATION)
+	$(GCC) -o $(BIN_EXAMPLE) $(GFLAGS) $(OBJS_EXAMPLE) $(STATIC_LIB_LOCATION) $(LIB)
 
 clean :
 	rm -rf $(OBJS) $(OBJS_EXAMPLE) $(BIN_EXAMPLE) $(STATIC_LIB_LOCATION) $(DYNAMIC_LIB_LOCATION)

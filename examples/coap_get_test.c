@@ -10,7 +10,6 @@
 #include <stdarg.h>
 #include <stdint.h>
 
-
 #include "../thingml_coap_utility.h"
 #include "../cmd_get.h"
 
@@ -57,7 +56,6 @@ int main(int argc, char* argv[]) {
 	context->fn_onmsgrcv_callback = coap_message_recieved_callback;
 
 	tool_cmd_get_url((void*) context);
-
 }
 
 
