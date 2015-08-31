@@ -20,51 +20,33 @@
 #include <smcp/smcp.h>
 #include <string.h>
 #include <sys/errno.h>
-#include "help.h"
 #include "cmd_get.h"
 #include <smcp/url-helpers.h>
 #include <signal.h>
 #include "smcpctl.h"
 #include <smcp/smcp-missing.h>
 
-static arg_list_item_t option_list[] = {
-	{ 'h', "help",	  NULL, "Print Help"				},
-	{ 'i', "include", NULL, "Include headers in output" },
-//	{ 'f', "follow",  NULL, "Follow redirects"			},
-	{ 'O', "observe",  NULL, "Observe changes"			},
-	{ 'k', "keep-alive",  NULL, "Send keep-alive packets" },
-	{ 0, "non",  NULL, "Send as non-confirmable" },
-	{ 0, "size-request", NULL, "(writeme)" },
-	{ 0, "ignore-first", NULL, "(writeme)" },
-	{ 0, "observe-once", NULL, "(writeme)" },
-	{ 0  , "timeout",  "seconds", "Change timeout period (Default: 30 Seconds)" },
-	{ 'a', "accept", "mime-type/coap-number", "hint to the server the content-type you want" },
-	{ 0 }
-};
+#include "thingml_coap_utility.h"
+
+
 
 typedef void (*sig_t)(int);
 
 static int gRet;
 static sig_t previous_sigint_handler;
 static bool get_show_headers, get_observe, get_keep_alive;
+
 static uint16_t size_request;
+static int redirect_count;
 static cms_t get_timeout;
 static bool observe_ignore_first;
 static bool observe_once;
 static coap_transaction_type_t get_tt;
-static void
-signal_interrupt(int sig) {
-	gRet = ERRORCODE_INTERRUPT;
-	signal(SIGINT, previous_sigint_handler);
-}
 
-bool send_get_request(
-	smcp_t smcp, const char* url, const char* next, coap_size_t nextlen);
+bool send_get_request(smcp_t smcp, const char* next, coap_size_t nextlen, void *thingML_context);
 
 static int retries = 0;
-static const char *url_data;
 static coap_size_t next_len = ((coap_size_t)(-1));
-static int redirect_count;
 static int last_observe_value = -1;
 static coap_content_type_t request_accept_type = -1;
 
@@ -72,6 +54,8 @@ static struct smcp_transaction_s transaction;
 
 static smcp_status_t
 get_response_handler(int statuscode, void* context) {
+	ThingMLCOAPContext * thingml_context = (ThingMLCOAPContext *) context;
+
 	const char* content = (const char*)smcp_inbound_get_content_ptr();
 	coap_size_t content_length = smcp_inbound_get_content_len();
 
@@ -79,6 +63,7 @@ get_response_handler(int statuscode, void* context) {
 		if(content_length>(smcp_inbound_get_packet_length()-4)) {
 			fprintf(stderr, "INTERNAL ERROR: CONTENT_LENGTH LARGER THAN PACKET_LENGTH-4! (content_length=%u, packet_length=%u)\n",content_length,smcp_inbound_get_packet_length());
 			gRet = ERRORCODE_UNKNOWN;
+			thingml_context->fn_onerror_callback(thingml_context->thing_instance, gRet);
 			goto bail;
 		}
 
@@ -96,6 +81,7 @@ get_response_handler(int statuscode, void* context) {
 		if(!coap_verify_packet((void*)smcp_inbound_get_packet(), smcp_inbound_get_packet_length())) {
 			fprintf(stderr, "INTERNAL ERROR: CALLBACK GIVEN INVALID PACKET!\n");
 			gRet = ERRORCODE_UNKNOWN;
+			thingml_context->fn_onerror_callback(thingml_context->thing_instance, gRet);
 			goto bail;
 		}
 	}
@@ -120,6 +106,7 @@ get_response_handler(int statuscode, void* context) {
 			fprintf(stderr, "get: Result code = %d (%s)\n", statuscode,
 					(statuscode < 0) ? smcp_status_to_cstr(
 					statuscode) : coap_code_to_cstr(statuscode));
+			thingml_context->fn_onerror_callback(thingml_context->thing_instance, gRet);
 		}
 	}
 
@@ -142,17 +129,7 @@ get_response_handler(int statuscode, void* context) {
 
 		}
 
-		fprintf(stdout, "hey!!!!!!\n");
-
-		fwrite(content, content_length, 1, stdout);
-
-		if(last_block) {
-			// Only print a newline if the content doesn't already print one.
-			if(content_length && (content[content_length - 1] != '\n'))
-				printf("\n");
-		}
-
-		fflush(stdout);
+		thingml_context->fn_onmsgrcv_callback(thingml_context->thing_instance, content, content_length);
 
 		last_observe_value = observe_value;
 	}
@@ -168,12 +145,13 @@ bail:
 
 smcp_status_t
 resend_get_request(void* context) {
+	ThingMLCOAPContext * thingml_context = (ThingMLCOAPContext*) context;
 	smcp_status_t status = 0;
 
 	status = smcp_outbound_begin(smcp_get_current_instance(),COAP_METHOD_GET, get_tt);
 	require_noerr(status,bail);
 
-	status = smcp_outbound_set_uri(url_data, 0);
+	status = smcp_outbound_set_uri(thingml_context->url, 0);
 	require_noerr(status,bail);
 
 	if(request_accept_type!=COAP_CONTENT_TYPE_UNKNOWN) {
@@ -196,18 +174,13 @@ bail:
 	return status;
 }
 
-bool
-send_get_request(
-	smcp_t smcp, const char* url, const char* next, coap_size_t nextlen
-) {
-	fprintf(stdout, "send_get_request hey!!!!!!\n");
+bool send_get_request(smcp_t smcp, const char* next, coap_size_t nextlen, void *thingML_context) {
 	bool ret = false;
 	smcp_status_t status = 0;
 	int flags = SMCP_TRANSACTION_ALWAYS_INVALIDATE;
 	gRet = ERRORCODE_INPROGRESS;
 
 	retries = 0;
-	url_data = url;
 
 	if(get_observe)
 		flags |= SMCP_TRANSACTION_OBSERVE;
@@ -220,8 +193,9 @@ send_get_request(
 		flags, // Flags
 		(void*)&resend_get_request,
 		(void*)&get_response_handler,
-		(void*)url_data
+		thingML_context
 	);
+
 	status = smcp_transaction_begin(smcp, &transaction, get_timeout);
 
 	if(status) {
@@ -239,17 +213,10 @@ bail:
 	return ret;
 }
 
-
 int
-tool_cmd_get(
-	smcp_t smcp, int argc, char* argv[]
+tool_cmd_get_url(
+		smcp_t smcp, void *thingML_context
 ) {
-	fprintf(stdout, "tool_cmd_get hey!!!!!!\n");
-	gRet = ERRORCODE_INPROGRESS;
-	int i;
-	char url[1000] = "";
-
-	previous_sigint_handler = signal(SIGINT, &signal_interrupt);
 	get_show_headers = false;
 	next_len = ((coap_size_t)(-1));
 	get_show_headers = false;
@@ -264,89 +231,9 @@ tool_cmd_get(
 	observe_ignore_first = false;
 	get_tt = COAP_TRANS_TYPE_CONFIRMABLE;
 
-	if(strcmp(argv[0],"observe")==0 || strcmp(argv[0],"obs")==0) {
-		get_observe = true;
-		get_timeout = CMS_DISTANT_FUTURE;
-	}
+	gRet = ERRORCODE_INPROGRESS;
+	require(send_get_request(smcp, NULL, 0, thingML_context), bail);
 
-	BEGIN_LONG_ARGUMENTS(gRet)
-	HANDLE_LONG_ARGUMENT("include") get_show_headers = true;
-	HANDLE_LONG_ARGUMENT("follow") redirect_count = 10;
-	HANDLE_LONG_ARGUMENT("no-follow") redirect_count = 0;
-	HANDLE_LONG_ARGUMENT("slice-size") size_request = htons(strtol(argv[++i], NULL, 0));
-	HANDLE_LONG_ARGUMENT("timeout") get_timeout = (cms_t)(1000*strtof(argv[++i], NULL));
-	HANDLE_LONG_ARGUMENT("observe") get_observe = true;
-	HANDLE_LONG_ARGUMENT("no-observe") get_observe = false;
-	HANDLE_LONG_ARGUMENT("non") get_tt = COAP_TRANS_TYPE_NONCONFIRMABLE;
-	HANDLE_LONG_ARGUMENT("keep-alive") get_keep_alive = true;
-	HANDLE_LONG_ARGUMENT("no-keep-alive") get_keep_alive = false;
-	HANDLE_LONG_ARGUMENT("once") observe_once = true;
-	HANDLE_LONG_ARGUMENT("ignore-first") observe_ignore_first = true;
-	HANDLE_LONG_ARGUMENT("accept") {
-		i++;
-		if(!argv[i]) {
-			fprintf(stderr, "Missing argument for \"%s\"\n", argv[i-1]);
-			gRet = ERRORCODE_BADARG;
-			goto bail;
-		}
-		request_accept_type = coap_content_type_from_cstr(argv[i]);
-	}
-
-	HANDLE_LONG_ARGUMENT("help") {
-		print_arg_list_help(option_list, argv[0], "[args] <uri>");
-		gRet = ERRORCODE_HELP;
-		goto bail;
-	}
-	BEGIN_SHORT_ARGUMENTS(gRet)
-	HANDLE_SHORT_ARGUMENT('i') get_show_headers = true;
-	HANDLE_SHORT_ARGUMENT('f') redirect_count = 10;
-	HANDLE_SHORT_ARGUMENT('O') get_observe = true;
-	HANDLE_SHORT_ARGUMENT('a') {
-		i++;
-		if(!argv[i]) {
-			fprintf(stderr, "Missing argument for \"%s\"\n", argv[i-1]);
-			gRet = ERRORCODE_BADARG;
-			goto bail;
-		}
-		request_accept_type = coap_content_type_from_cstr(argv[i]);
-	}
-
-	HANDLE_SHORT_ARGUMENT2('h', '?') {
-		print_arg_list_help(option_list, argv[0], "[args] <uri>");
-		gRet = ERRORCODE_HELP;
-		goto bail;
-	}
-	HANDLE_OTHER_ARGUMENT() {
-		if(url[0] == 0) {
-			if(getenv("SMCP_CURRENT_PATH")) {
-				strncpy(url, getenv("SMCP_CURRENT_PATH"), sizeof(url));
-				url_change(url, argv[i]);
-			} else {
-				strncpy(url, argv[i], sizeof(url));
-			}
-		} else {
-			fprintf(stderr, "Unexpected extra argument: \"%s\"\n", argv[i]);
-			gRet = ERRORCODE_BADARG;
-			goto bail;
-		}
-	}
-	END_ARGUMENTS
-
-	if((url[0] == 0) && getenv("SMCP_CURRENT_PATH"))
-		strncpy(url, getenv("SMCP_CURRENT_PATH"), sizeof(url));
-
-	if(url[0] == 0) {
-		fprintf(stderr, "Missing path argument.\n");
-		gRet = ERRORCODE_BADARG;
-		goto bail;
-	}
-
-	if(size_request) {
-		char block[] = {1};
-		require(send_get_request(smcp, url, block, 1), bail);
-	} else {
-		require(send_get_request(smcp, url, NULL, 0), bail);
-	}
 
 	while(ERRORCODE_INPROGRESS == gRet) {
 		smcp_wait(smcp,1000);
@@ -356,6 +243,5 @@ tool_cmd_get(
 bail:
 	smcp_transaction_end(smcp,&transaction);
 	signal(SIGINT, previous_sigint_handler);
-	url_data = NULL;
 	return gRet;
 }

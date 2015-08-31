@@ -7,5 +7,5 @@
  *
  */
 
-extern int tool_cmd_get(
-	smcp_t smcp, int argc, char* argv[]);
+extern int tool_cmd_get_url(
+	smcp_t smcp, void *thingML_context);
