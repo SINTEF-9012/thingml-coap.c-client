@@ -1,7 +1,7 @@
-#SRCS = cmd_list.c cmd_get.c cmd_post.c help.c cmd_repeat.c cmd_delete.c
-#OBJS = cmd_list.o cmd_get.o cmd_post.o help.o cmd_repeat.o cmd_delete.o
-SRCS = cmd_get.c
-OBJS = cmd_get.o
+SRCS = cmd_list.c cmd_get.c cmd_post.c help.c cmd_repeat.c cmd_delete.c
+OBJS = cmd_list.o cmd_get.o cmd_post.o help.o cmd_repeat.o cmd_delete.o
+#SRCS = cmd_get.c
+#OBJS = cmd_get.o
 
 SRCS_EXAMPLE = ./examples/coap_get_test.c
 OBJS_EXAMPLE = ./examples/coap_get_test.o
