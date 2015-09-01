@@ -7,6 +7,10 @@ SRCS_EXAMPLE = ./examples/coap_get_test.c
 OBJS_EXAMPLE = ./examples/coap_get_test.o
 BIN_EXAMPLE =./examples/coap_get_test
 
+SRC_OBS_EXAMPLE = ./examples/coap_observe_test.c
+OBJ_OBS_EXAMPLE = ./examples/coap_observe_test.o
+BIN_OBS_EXAMPLE =./examples/coap_observe_test
+
 
 STATIC_LIB_LOCATION = libtmlcaopclient.a
 DYNAMIC_LIB_LOCATION = libtmlcaopclient.so
@@ -48,7 +52,10 @@ uninstall:
 	rm -rf $(INSTALL_LIB_DIR)/$(STATIC_LIB_LOCATION)
 	rm -rf $(INSTALL_LIB_DIR)/$(DYNAMIC_LIB_LOCATION)
 
-bin : bin_get
+bin : bin_get bin_obs
+
+bin_obs : $(OBJ_OBS_EXAMPLE)
+	$(GCC) -o $(BIN_OBS_EXAMPLE) $(GFLAGS) $(OBJ_OBS_EXAMPLE) $(STATIC_LIB_LOCATION) $(LIB)
 
 bin_get : $(OBJS_EXAMPLE)
 	$(GCC) -o $(BIN_EXAMPLE) $(GFLAGS) $(OBJS_EXAMPLE) $(STATIC_LIB_LOCATION) $(LIB)

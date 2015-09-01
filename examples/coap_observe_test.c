@@ -55,6 +55,8 @@ int main(int argc, char* argv[]) {
 	context->fn_onmsgrcv_callback = coap_message_recieved_callback;
 	context->client_coap_config = coap_client_config_default;
 
+	context->client_coap_config.get_observe = true;
+
 	tool_cmd_get_url((void*) context);
 
 	free(context);

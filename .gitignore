@@ -38,3 +38,4 @@
 .project
 
 coap_get_test
+coap_observe_test
