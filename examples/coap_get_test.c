@@ -40,7 +40,6 @@ void coap_message_recieved_callback(void* _instance, ...) {
 	va_end(valist);
 
 	printf("message size %d, and message '%s' \n", message_size, message);
-
 }
 
 int main(int argc, char* argv[]) {
@@ -54,8 +53,11 @@ int main(int argc, char* argv[]) {
 	context->port = port;
 	context->fn_onerror_callback = coap_error_callback;
 	context->fn_onmsgrcv_callback = coap_message_recieved_callback;
+	context->client_coap_config = coap_client_config_default;
 
 	tool_cmd_get_url((void*) context);
+
+	free(context);
 }
 
 

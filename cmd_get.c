@@ -216,19 +216,20 @@ bail:
 
 int
 tool_cmd_get_url(void *thingML_context) {
-	get_show_headers = false;
-	next_len = ((coap_size_t)(-1));
-	get_show_headers = false;
-	redirect_count = 0;
-	size_request = 0;
-	get_observe = false;
-	get_keep_alive = false;
-	get_timeout = 30*1000; // Default timeout is 30 seconds.
-	last_observe_value = -1;
-	request_accept_type = COAP_CONTENT_TYPE_UNKNOWN;
-	observe_once = false;
-	observe_ignore_first = false;
-	get_tt = COAP_TRANS_TYPE_CONFIRMABLE;
+	ThingMLCOAPContext* context = (ThingMLCOAPContext*) thingML_context;
+
+	get_show_headers = context->client_coap_config.get_show_headers;
+	next_len = context->client_coap_config.next_len;
+	redirect_count = context->client_coap_config.redirect_count;
+	size_request = context->client_coap_config.size_request;
+	get_observe = context->client_coap_config.get_observe;
+	get_keep_alive = context->client_coap_config.get_keep_alive;
+	get_timeout = context->client_coap_config.get_timeout; // Default timeout is 30 seconds.
+	last_observe_value = context->client_coap_config.last_observe_value;
+	request_accept_type = context->client_coap_config.request_accept_type;
+	observe_once = context->client_coap_config.observe_once;
+	observe_ignore_first = context->client_coap_config.observe_ignore_first;
+	get_tt = context->client_coap_config.get_tt;
 
 	smcp_t gSMCPInstance = smcp_create(((ThingMLCOAPContext*) thingML_context)->port);
 
