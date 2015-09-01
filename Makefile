@@ -1,7 +1,7 @@
-SRCS = cmd_list.c cmd_get.c cmd_post.c help.c cmd_repeat.c cmd_delete.c thingml_coap_utility.c
-OBJS = cmd_list.o cmd_get.o cmd_post.o help.o cmd_repeat.o cmd_delete.o thingml_coap_utility.o
-#SRCS = cmd_get.c
-#OBJS = cmd_get.o
+#SRCS = cmd_list.c cmd_get.c cmd_post.c help.c cmd_repeat.c cmd_delete.c thingml_coap_utility.c
+#OBJS = cmd_list.o cmd_get.o cmd_post.o help.o cmd_repeat.o cmd_delete.o thingml_coap_utility.o
+SRCS = cmd_get.c thingml_coap_utility.c
+OBJS = cmd_get.o thingml_coap_utility.o
 
 SRCS_EXAMPLE = ./examples/coap_get_test.c
 OBJS_EXAMPLE = ./examples/coap_get_test.o
@@ -61,4 +61,4 @@ bin_get : $(OBJS_EXAMPLE)
 	$(GCC) -o $(BIN_EXAMPLE) $(GFLAGS) $(OBJS_EXAMPLE) $(STATIC_LIB_LOCATION) $(LIB)
 
 clean :
-	rm -rf $(OBJS) $(OBJS_EXAMPLE) $(BIN_EXAMPLE) $(STATIC_LIB_LOCATION) $(DYNAMIC_LIB_LOCATION)
+	rm -rf $(OBJS) $(OBJS_EXAMPLE) $(BIN_EXAMPLE) $(OBJ_OBS_EXAMPLE) $(BIN_OBS_EXAMPLE) $(STATIC_LIB_LOCATION) $(DYNAMIC_LIB_LOCATION)
