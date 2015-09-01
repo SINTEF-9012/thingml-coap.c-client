@@ -19,7 +19,7 @@ LIB =-lsmcp
 
 INSTALL_LIB_DIR = /usr/local/lib
 INCLUDE_DIR = /usr/local/include
-INCLUDE_INSTALL_DIR = thingmlcaop
+INCLUDE_COAP_DIR = thingmlcaop
 
 CROSS_COMPILE :=
  
@@ -41,14 +41,14 @@ dynamiclib : $(OBJS)
 	$(GCC) -shared -rdynamic -o $(DYNAMIC_LIB_LOCATION) $(OBJS)
 	
 install: staticlib dynamiclib
-	install -d $(INCLUDE_DIR)/$(INCLUDE_INSTALL_DIR)
+	install -d $(INCLUDE_DIR)/$(INCLUDE_COAP_DIR)
 	install $(STATIC_LIB_LOCATION) $(INSTALL_LIB_DIR)
 	install $(DYNAMIC_LIB_LOCATION) $(INSTALL_LIB_DIR)
-	cp -r ./*.h $(INCLUDE_DIR)/$(INCLUDE_DIR)
+	cp -r ./*.h $(INCLUDE_DIR)/$(INCLUDE_COAP_DIR)
 	ldconfig
 
 uninstall:
-	rm -rf $(INCLUDE_DIR)/$(INCLUDE_INSTALL_DIR)
+	rm -rf $(INCLUDE_DIR)/$(INCLUDE_COAP_DIR)
 	rm -rf $(INSTALL_LIB_DIR)/$(STATIC_LIB_LOCATION)
 	rm -rf $(INSTALL_LIB_DIR)/$(DYNAMIC_LIB_LOCATION)
 
